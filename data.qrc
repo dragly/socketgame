@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/qmlwebsocketserver/main.qml</file>
+        <file>qml/qmlwebsocketserver/PlayerData.qml</file>
+    </qresource>
+</RCC>
