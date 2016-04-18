@@ -58,8 +58,8 @@ Rectangle {
             property ParticleData particleData: ParticleData {}
             x: particleData.position.x * scaleFactor - height * 0.5
             y: particleData.position.y * scaleFactor - width * 0.5
-            width: 20 * particleData.mass
-            height: 20 * particleData.mass
+            width: 20 //* particleData.mass
+            height: 20 //* particleData.mass
             radius: width * 0.5
             color: {
                 if(particleData.playerId === playerId) {
@@ -200,7 +200,7 @@ Rectangle {
             webSocket.onStatusChanged.connect(function(status) {
                 if(status === WebSocket.Closed) {
                     server.players.splice(server.players.indexOf(player), 1);
-                    server.particles.splice(server.players.indexOf(player), 1);
+                    server.particles.splice(server.particles.indexOf(player), 1);
                     player.destroy(1);
                 }
             });

@@ -26,7 +26,6 @@ QtObject {
         force = Qt.vector2d(0, 0);
         resetNext = false;
         target = position;
-
     }
 
     property QtObject properties: QtObject {
