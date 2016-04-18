@@ -34,6 +34,7 @@
 import QtQuick 2.0
 import QtQuick.Controls 1.4
 import QtWebSockets 1.0
+import Qt.labs.settings 1.0
 
 Rectangle {
 
@@ -142,11 +143,6 @@ Rectangle {
         property var particles: []
         property int nextId: 0
 
-        host: "192.168.2.2"
-        port: 44789
-        accept: true
-        listen: true
-
         Component.onCompleted: {
             for(var i = 0; i < 10; i++) {
                 createRandomParticle();
@@ -213,6 +209,113 @@ Rectangle {
             console.log(qsTr("Server error: %1").arg(errorString));
         }
     }
+
+    WebSocket {
+        id: socket
+        onTextMessageReceived: {
+            var state = JSON.parse(message);
+            if(state.playerId !== undefined) {
+                console.log("Player ID set");
+                playerId = state.playerId;
+                return;
+            }
+            if(particles.length !== state.particles.length) {
+                var difference = state.particles.length > particles.length;
+                if(difference > 0) {
+                    for(var i in state.particles) {
+                        var particle = particleItemComponent.createObject(playground);
+                        particles.push(particle);
+                    }
+                } else {
+                    var particle = particles.pop();
+                    particle.destroy(1);
+                }
+            }
+            for(var i in particles) {
+                var particle = particles[i];
+                var particleData = state.particles[i];
+                for(var j in particleData) {
+                    particle.particleData.properties[j] = particleData[j];
+                }
+            }
+        }
+
+        onStatusChanged: {
+            if (socket.status == WebSocket.Error) {
+                console.log(qsTr("Client error: %1").arg(socket.errorString));
+            } else if (socket.status == WebSocket.Closed) {
+                console.log(qsTr("Client socket closed."));
+            }
+        }
+    }
+
+    Rectangle {
+        id: playground
+        anchors.fill: parent
+        color: "#333333"
+
+        MouseArea {
+            property real previousTrigger: Date.now()
+            anchors.fill: parent
+
+            function trigger(mouse) {
+                if(Date.now() - previousTrigger < 100) {
+                    return;
+                }
+
+                var message = JSON.stringify({target: {x: mouse.x / scaleFactor, y: mouse.y / scaleFactor}});
+                console.log("Sending message", message);
+                socket.sendTextMessage(message);
+                previousTrigger = Date.now();
+            }
+
+            onPressed: {
+                trigger(mouse);
+            }
+
+            onPositionChanged: {
+                trigger(mouse);
+            }
+        }
+    }
+
+    Row {
+        anchors {
+            bottom: parent.bottom
+        }
+
+        TextField {
+            id: serverTextField
+            text: "127.0.0.1"
+        }
+
+        TextField {
+            id: serverPortTextField
+            text: "47960"
+        }
+
+        Button {
+            text: "Serve"
+            onClicked: {
+                server.host = serverTextField.text;
+                server.port = parseInt(serverPortTextField.text);
+                server.listen = true;
+            }
+        }
+
+        TextField {
+            id: clientTextField
+            text: "ws://127.0.0.1:47960"
+        }
+
+        Button {
+            text: "Connect"
+            onClicked: {
+                socket.url = clientTextField.text;
+            }
+        }
+    }
+
 
     Timer {
         id: timer
@@ -291,12 +394,8 @@ Rectangle {
                             var massChange = 0.01 * dt;
                             if(atom1.human && atom2.human) {
                                 if(atom1.mass > atom2.mass) {
-                                    atom1.mass += massChange;
-                                    atom2.mass -= massChange;
                                     atom2.leaking = true;
                                 } else {
-                                    atom1.mass -= massChange;
-                                    atom2.mass += massChange;
                                     atom1.leaking = true;
                                 }
                             } else if(atom1.human) {
@@ -381,104 +480,9 @@ Rectangle {
         }
     }
 
-    WebSocket {
-        id: socket
-        url: "ws://192.168.2.2:44789"
-        active: true
-        onTextMessageReceived: {
-            var state = JSON.parse(message);
-            if(state.playerId !== undefined) {
-                console.log("Player ID set");
-                playerId = state.playerId;
-                return;
-            }
-            if(particles.length !== state.particles.length) {
-                var difference = state.particles.length > particles.length;
-                if(difference > 0) {
-                    for(var i in state.particles) {
-                        var particle = particleItemComponent.createObject(playground);
-                        particles.push(particle);
-                    }
-                } else {
-                    var particle = particles.pop();
-                    particle.destroy(1);
-                }
-            }
-            for(var i in particles) {
-                var particle = particles[i];
-                var particleData = state.particles[i];
-                for(var j in particleData) {
-                    particle.particleData.properties[j] = particleData[j];
-                }
-            }
-        }
-
-        onStatusChanged: {
-            if (socket.status == WebSocket.Error) {
-                console.log(qsTr("Client error: %1").arg(socket.errorString));
-            } else if (socket.status == WebSocket.Closed) {
-                console.log(qsTr("Client socket closed."));
-            }
-        }
-    }
-
-    Rectangle {
-        id: playground
-        anchors.fill: parent
-        color: "#333333"
-
-        MouseArea {
-            property real previousTrigger: Date.now()
-            anchors.fill: parent
-
-            function trigger(mouse) {
-                if(Date.now() - previousTrigger < 100) {
-                    return;
-                }
-
-                var message = JSON.stringify({target: {x: mouse.x / scaleFactor, y: mouse.y / scaleFactor}});
-                console.log("Sending message", message);
-                socket.sendTextMessage(message);
-                previousTrigger = Date.now();
-            }
-
-            onPressed: {
-                trigger(mouse);
-            }
-
-            onPositionChanged: {
-                trigger(mouse);
-            }
-        }
-    }
-
-    Column {
-        anchors {
-            bottom: parent.bottom
-            left: parent.left
-            right: parent.right
-        }
-
-        Text {
-            text: "Server: " + server.url
-        }
-
-        TextField {
-            id: serverTextField
-            anchors {
-                left: parent.left
-                right: parent.rigt
-                margins: 16
-            }
-            text: "ws://192.168.2.2:44789"
-            width: 300
-        }
-
-        Button {
-            text: "Connect"
-            onClicked: {
-                socket.url = serverTextField.text;
-            }
-        }
+    Settings {
+        property alias serverHost: serverTextField.text
+        property alias serverPort: serverPortTextField.text
+        property alias socketUrl: clientTextField.text
     }
 }
