@@ -6,7 +6,8 @@ TEMPLATE = app
 
 CONFIG   -= app_bundle
 
-SOURCES += main.cpp
+SOURCES += main.cpp \
+    gameobject.cpp
 
 RESOURCES += data.qrc
 
@@ -23,3 +24,6 @@ DISTFILES += \
     android/gradlew.bat
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
+
+HEADERS += \
+    gameobject.h
