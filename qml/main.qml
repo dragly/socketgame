@@ -11,6 +11,7 @@ Rectangle {
     property int playerId: 0
     property var players: []
     property var entities: []
+    property var player: players[playerId]
 
     width: 1280
     height: 1024
@@ -94,7 +95,7 @@ Rectangle {
             persistentProperties: QtObject {
                 id: props
                 property alias playerId: player.playerId
-                property string color: root.color
+                property string color: player.color
             }
             Binding {
                 target: player
@@ -118,7 +119,7 @@ Rectangle {
         property var entities: []
         property int currentPlayerId: 0
         property int currentEntityId: 0
-        property var availableColors: ["red", "green", "blue", "pink", "yellow", "lightblue", "lightgreen", "orange"]
+        property var availableColors: ["pink", "lightgreen", "lightblue", "yellow", "orange"]
 
         listen: true
 
@@ -133,10 +134,24 @@ Rectangle {
             var player = playerComponent.createObject(server, playerProperties);
             server.players.push(player);
 
-            for(var i = 0; i < 10; i++) {
+            for(var i = 0; i < 100; i++) {
                 server.createRandomParticle();
             }
             timer.start();
+        }
+
+        function buildNeighborList(entity1) {
+            entity1.neighbors = [];
+            for(var j in server.entities) {
+                var entity2 = server.entities[j];
+                if(entity1 === entity2) {
+                    continue
+                }
+                var delta = entity2.position.minus(entity1.position);
+                if(delta.length() < 0.1) {
+                    entity1.neighbors.push(entity2);
+                }
+            }
         }
 
         function createEntityFromUrl(url, properties) {
@@ -155,18 +170,25 @@ Rectangle {
                 properties.playerId = properties.player.playerId;
             }
 
+            properties.visible = false;
+
             var component = Qt.createComponent(url);
             var entity = component.createObject(serverPlayground, properties);
             entities.push(entity);
+            buildNeighborList(entity);
             return entity;
         }
 
         function createRandomParticle() {
             var particle = createEntityFromUrl("Particle.qml", {
-                                                   player: players[0]
+                                                   player: players[0],
+                                                   mass: 1.0
                                                });
             particle.position.x = Math.random() * serverPlayground.width / scaleFactor;
             particle.position.y = Math.random() * serverPlayground.height / scaleFactor;
+
+            particle.velocity.x = (-1.0 + 2.0 * Math.random()) * 0.1;
+            particle.velocity.y = (-1.0 + 2.0 * Math.random()) * 0.1;
         }
 
         function serialize() {
@@ -188,12 +210,19 @@ Rectangle {
             }
         }
 
+        function removeEntity(entity) {
+            server.entities.splice(server.entities.indexOf(entity), 1);
+            entity.destroy(100);
+        }
+
         onClientConnected: {
             currentPlayerId += 1;
+            var color = availableColors[currentPlayerId % availableColors.length];
+            console.log("Player color:", color);
             var playerProperties = {
                 webSocket: webSocket,
                 playerId: currentPlayerId,
-                color: availableColors[currentPlayerId % availableColors.length]
+                color: color
             };
             var player = playerComponent.createObject(serverPlayground, playerProperties);
             player.playerId = currentPlayerId;
@@ -202,21 +231,45 @@ Rectangle {
                 type: "welcome",
                 playerId: currentPlayerId
             }
+
+            var baseProperties = {
+                player: player
+            };
+            var base = server.createEntityFromUrl("Base.qml", baseProperties);
+            base.position.x = Math.random() * serverPlayground.width / scaleFactor;
+            base.position.y = Math.random() * serverPlayground.height / scaleFactor;
+
             webSocket.sendTextMessage(JSON.stringify(welcomeMessage));
 
             webSocket.onTextMessageReceived.connect(function(message) {
                 var parsed = JSON.parse(message);
                 if(parsed.target) {
-                    player.hasTarget = true;
-                    player.target.x = parsed.target.x;
-                    player.target.y = parsed.target.y;
+                    for(var i in entities) {
+                        var entity = entities[i];
+                        if(entity.particle && entity.player === player) {
+                            entity.hasTarget = true;
+                            entity.target.x = parsed.target.x;
+                            entity.target.y = parsed.target.y;
+                        }
+                    }
                 }
             });
             webSocket.onStatusChanged.connect(function(status) {
                 if(status === WebSocket.Closed) {
                     server.players.splice(server.players.indexOf(player), 1);
-                    server.entities.splice(server.entities.indexOf(player), 1);
-                    player.destroy(1);
+                    var toDelete = [];
+                    for(var i in server.entities) {
+                        var entity = server.entities[i];
+                        if(entity.player === player) {
+                            toDelete.push(entity);
+                        }
+                    }
+                    for(var i in toDelete) {
+                        var entity = toDelete[i];
+                        server.removeEntity(entity);
+                    }
+
+                    player.destroy(100);
                 }
             });
         }
@@ -228,9 +281,15 @@ Rectangle {
     WebSocket {
         id: socket
 
+        property real lastReceivedTime: Date.now()
+
         url: server.url
 
         onTextMessageReceived: {
+            console.log("Received data");
+            var currentTime = Date.now();
+            var deltaTime = currentTime - lastReceivedTime;
+
             var parsed = JSON.parse(message);
             switch(parsed.type) {
             case "welcome":
@@ -239,6 +298,7 @@ Rectangle {
             case "state":
                 for(var i in entities) {
                     var entity = entities[i];
+                    entity.animationDuration = deltaTime;
                     entity.toBeDeleted = true;
                 }
 
@@ -321,6 +381,8 @@ Rectangle {
 //                }
                 break;
             }
+            lastReceivedTime = currentTime;
+            console.log("Received data done");
         }
 
         onStatusChanged: {
@@ -336,8 +398,8 @@ Rectangle {
         id: serverPlayground
         visible: false
 
-        width: 2560
-        height: 2560
+        width: 1024
+        height: 1024
     }
 
     Playground {
@@ -423,7 +485,16 @@ Rectangle {
         interval: 16
         running: false
         repeat: true
+
+        property real lastSpawn: Date.now()
+        property int neighborUpdate: 0
+        property int neighborUpdateInterval: 20
+        property int messageInterval: 20
+        property int tickCount: 0
+
         onTriggered: {
+            var currentTime = Date.now();
+
             var particleFrequency = 0.1;
             if(Math.random() < particleFrequency * interval / 1000) {
                 server.createRandomParticle();
@@ -431,17 +502,42 @@ Rectangle {
 
             var dt = 0.01;
 
+            if(currentTime - lastSpawn > 2000) {
+                for(var i in server.entities) {
+                    var base = server.entities[i];
+                    if(!base.base) {
+                        continue;
+                    }
+
+                    var particleProperties = {
+                        human: true,
+                        player: base.player
+                    }
+
+                    var particle = server.createEntityFromUrl("Particle.qml", particleProperties);
+                    particle.velocity.x = 0.1 * (-1.0 + 2.0 * Math.random());
+                    particle.velocity.y = 0.1 * (-1.0 + 2.0 * Math.random());
+                    particle.position = base.position;
+
+                    console.log("Spawning particle");
+                }
+                lastSpawn = currentTime;
+            }
+
             for(var i in server.entities) {
                 var atom = server.entities[i];
                 if(atom.particle) {
                     atom.force = Qt.vector2d(0, 0);
                 }
+                if(atom.entityId % neighborUpdateInterval === neighborUpdate) {
+                    server.buildNeighborList(atom);
+                }
             }
 
             for(var i in server.entities) {
                 var atom1 = server.entities[i];
-                for(var j in server.entities) {
-                    var atom2 = server.entities[j]
+                for(var j in atom1.neighbors) {
+                    var atom2 = atom1.neighbors[j]
                     if(!atom1.particle || !atom2.particle) {
                         continue;
                     }
@@ -477,24 +573,16 @@ Rectangle {
                         force = Qt.vector2d(0, 0)
                     }
 
-                    if(atom1.human && atom2.human) {
-                        force = Qt.vector2d(0, 0);
-                    }
-
                     atom1.force = atom1.force.minus(force)
                 }
             }
 
             for(var i in server.entities) {
+                var atom = server.entities[i]
+
                 if(!atom.particle) {
                     continue;
                 }
-
-                if(atom.resetNext) {
-                    atom.reset();
-                }
-
-                var atom = server.entities[i]
 
                 // mass check
                 if(atom.mass < 0.1) {
@@ -509,6 +597,9 @@ Rectangle {
                 // target
                 if(atom.hasTarget) {
                     atom.force = atom.force.plus(atom.target.minus(atom.position).normalized().times(0.4));
+                    if(atom.target.minus(atom.position).length() < 0.04) {
+//                        atom.hasTarget = false;
+                    }
                 }
 
                 // drag
@@ -544,13 +635,27 @@ Rectangle {
                 }
             }
 
-            for(var i in server.players) {
-                var player = server.players[i];
-                if(player.webSocket) {
-                    player.webSocket.sendTextMessage(JSON.stringify(server.serialize()));
+            if(tickCount % messageInterval === 0) {
+                console.log("Sending data");
+                for(var i in server.players) {
+                    var player = server.players[i];
+                    if(player.webSocket) {
+                        player.webSocket.sendTextMessage(JSON.stringify(server.serialize()));
+                    }
                 }
+                console.log("Sending data done");
             }
+            neighborUpdate += 1;
+            if(neighborUpdate >= neighborUpdateInterval) {
+                neighborUpdate = 0;
+            }
+            tickCount += 1;
         }
+    }
+
+    Text {
+        text: "Server url: " + server.url
+        color: "white"
     }
 
     Settings {

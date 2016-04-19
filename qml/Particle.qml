@@ -10,7 +10,6 @@ Entity {
     property int playerId: -1
     property bool resetNext: false
     property bool human: false
-    property vector2d position
     property vector2d velocity
     property vector2d force
     property vector2d target
@@ -20,24 +19,19 @@ Entity {
     
     filename: "Particle.qml"
 
-    x: position.x * scaleFactor - height * 0.5
-    y: position.y * scaleFactor - width * 0.5
-    width: 20 * mass
-    height: 20 * mass
+    width: 20
+    height: 20
     
     persistentProperties: QtObject {
-        property alias positionX: root.position.x
-        property alias positionY: root.position.y
         property alias targetX: root.target.x
         property alias targetY: root.target.y
         property alias human: root.human
         property alias mass: root.mass
+        property alias hasTarget: root.hasTarget
     }
-    
+
     function reset() {
-        position = Qt.vector2d(Math.random(), Math.random());
         mass = 1.0;
-        position = Qt.vector2d(Math.random(), Math.random());
         velocity = Qt.vector2d(0, 0);
         force = Qt.vector2d(0, 0);
         resetNext = false;
@@ -47,19 +41,21 @@ Entity {
     Rectangle {
         anchors.fill: parent
         radius: width * 0.5
-        color: player ? player.color : "purple"
+        color: root.player ? root.player.color : "purple"
+        border.color: Qt.darker(color, 1.5)
+        border.width: 2.0
     }
-    
+
     Rectangle {
         id: targetRectangle
-        x: (root.target.x - root.position.x) * scaleFactor - width * 0.5
-        y: (root.target.y - root.position.y) * scaleFactor - height * 0.5
-        visible: root.human
+        x: root.hasTarget ? (root.target.x - root.x / scaleFactor) * scaleFactor - width * 0.5 : 0
+        y: root.hasTarget ? (root.target.y - root.y / scaleFactor) * scaleFactor - height * 0.5 : 0
+        visible: root.hasTarget
         width: 10
         height: width
         radius: width * 0.25
-        color: "#01B0F0"
-        
+        color: Qt.lighter(root.player.color, 1.5)
+
         SequentialAnimation {
             running: true
             loops: Animation.Infinite

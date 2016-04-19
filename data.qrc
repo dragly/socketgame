@@ -4,5 +4,6 @@
         <file>qml/Entity.qml</file>
         <file>qml/Particle.qml</file>
         <file>qml/Playground.qml</file>
+        <file>qml/Base.qml</file>
     </qresource>
 </RCC>
