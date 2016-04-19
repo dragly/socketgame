@@ -6,6 +6,8 @@ import SocketGame 1.0
 
 Entity {
     id: root
+
+    signal spaceClicked()
     
     property int playerId: -1
     property bool resetNext: false
@@ -16,6 +18,8 @@ Entity {
     property bool hasTarget: false
     property real mass: 1.0
     property bool particle: true
+    property bool bursting: false
+    property real burstingFactor: 1.0
     
     filename: "Particle.qml"
 
@@ -28,6 +32,8 @@ Entity {
         property alias human: root.human
         property alias mass: root.mass
         property alias hasTarget: root.hasTarget
+        property alias bursting: root.bursting
+        property alias burstingFactor: root.burstingFactor
     }
 
     function reset() {
@@ -39,9 +45,11 @@ Entity {
     }
     
     Rectangle {
-        anchors.fill: parent
+        anchors.centerIn: parent
+        width: root.bursting ? parent.width * root.burstingFactor * 2.0 : parent.width
+        height: width
         radius: width * 0.5
-        color: root.player ? root.player.color : "purple"
+        color: root.bursting ? "orange" : Qt.darker(root.player.color, Math.max(1.0, 1.5 - 0.5 * (energy / defaultEnergy)))
         border.color: Qt.darker(color, 1.5)
         border.width: 2.0
     }
@@ -75,6 +83,12 @@ Entity {
                 from: 12
                 to: 6
             }
+        }
+    }
+
+    Behavior on burstingFactor {
+        NumberAnimation {
+            duration: root.animationDuration
         }
     }
 }

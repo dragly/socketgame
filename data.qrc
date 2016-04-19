@@ -5,5 +5,8 @@
         <file>qml/Particle.qml</file>
         <file>qml/Playground.qml</file>
         <file>qml/Base.qml</file>
+        <file>qml/Server.qml</file>
+        <file>qml/io.js</file>
+        <file>qml/random.js</file>
     </qresource>
 </RCC>
