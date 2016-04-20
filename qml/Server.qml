@@ -13,6 +13,7 @@ Item {
     property alias host: server.host
     property alias port: server.port
     property alias listen: server.listen
+    property alias running: server.running
 
     Playground {
         id: serverPlayground
@@ -32,6 +33,7 @@ Item {
         property int currentPlayerId: 0
         property int currentEntityId: 0
         property var availableColors: ["pink", "lightgreen", "lightblue", "yellow", "orange", "#dd3333"]
+        property bool running: false
 
         Component.onCompleted: {
             server.currentPlayerId += 1;
@@ -204,6 +206,7 @@ Item {
 
             webSocket.onTextMessageReceived.connect(function(message) {
                 var parsed = JSON.parse(message);
+                console.log("Client message", message);
                 switch(parsed.type) {
                 case "move":
                     for(var j in parsed.entities) {
@@ -217,10 +220,16 @@ Item {
                                 continue;
                             }
                             if(entity.particle) {
-                                entity.hasTarget = true;
+                                if(parsed.waypoint) {
+                                    entity.addWaypoint(parsed.target);
+                                } else {
+                                    entity.setTarget(parsed.target);
+                                }
                             }
-                            entity.target.x = parsed.target.x;
-                            entity.target.y = parsed.target.y;
+                            if(entity.base) {
+                                entity.target.x = parsed.target.x;
+                                entity.target.y = parsed.target.y;
+                            }
                         }
                     }
                     break;
@@ -271,7 +280,7 @@ Item {
     Timer {
         id: timer
         interval: 16
-        running: serverRunningCheckbox.checked
+        running: server.running
         repeat: true
 
         property int neighborUpdate: 0
@@ -310,8 +319,7 @@ Item {
                 particle.velocity.x = 0.2 * Random.centered();
                 particle.velocity.y = 0.2 * Random.centered();
                 particle.position = base.position;
-                particle.target = base.target;
-                particle.hasTarget = true;
+                particle.setTarget(base.target);
                 base.timeSinceSpawn = 0.0;
             }
 
@@ -355,7 +363,7 @@ Item {
 
                         var sigma = 0.01;
 
-                        var eps = 0.02;
+                        var eps = 0.03;
 
                         var sigma2 = sigma * sigma
                         var sigma6 = sigma2 * sigma2
@@ -400,8 +408,8 @@ Item {
                     // target
                     if(entity.hasTarget) {
                         entity.force = entity.force.plus(entity.target.minus(entity.position).normalized().times(1.4));
-                        if(entity.target.minus(entity.position).length() < 0.1 && entity.velocity.length() < 0.01) {
-                            entity.hasTarget = false;
+                        if(entity.target.minus(entity.position).length() < 0.2 && entity.velocity.length() < 0.06) {
+                            entity.shiftNextTarget();
                         }
                     }
 

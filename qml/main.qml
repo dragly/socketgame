@@ -104,7 +104,7 @@ Rectangle {
         property real lastReceivedTime: Date.now()
         property bool firstState: true
 
-        url: server.url
+        active: false
 
         onTextMessageReceived: {
             var currentTime = Date.now();
@@ -114,6 +114,7 @@ Rectangle {
             switch(parsed.type) {
             case "welcome":
                 playerId = parsed.playerId;
+                firstState = true;
                 break;
             case "state":
                 for(var i in entities) {
@@ -240,6 +241,26 @@ Rectangle {
         }
     }
 
+    function moveCommand(target, waypoint) {
+        var movedEntities = [];
+        for(var i in selectedEntities) {
+            movedEntities.push({entityId: selectedEntities[i].entityId});
+        }
+
+        var moveMessage = {
+            type: "move",
+            entities: movedEntities,
+            target: {
+                x: target.x,
+                y: target.y
+            },
+            waypoint: waypoint
+        };
+        console.log("Move message", JSON.stringify(moveMessage));
+        var message = JSON.stringify(moveMessage);
+        socket.sendTextMessage(message);
+    }
+
     Playground {
         id: playground
 
@@ -253,7 +274,6 @@ Rectangle {
         MouseArea {
             id: playgroundMouseArea
 
-            property real previousTrigger: Date.now()
             property bool selecting: false
             property point selectionStart
             property point selectionEnd
@@ -261,35 +281,21 @@ Rectangle {
 
             anchors.fill: parent
             drag.target: parent
-            acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
 
             onPressed: {
                 root.forceActiveFocus();
                 if(mouse.button === Qt.RightButton) {
                     drag.target = undefined;
-                    if(Date.now() - previousTrigger < 100) {
-                        return;
+                    var target = Qt.vector2d(mouse.x / playground.scaleFactor, mouse.y / playground.scaleFactor);
+                    var waypoint = false;
+                    if(mouse.modifiers & Qt.ShiftModifier) {
+                        waypoint = true;
                     }
-
-                    var movedEntities = [];
-                    for(var i in selectedEntities) {
-                        movedEntities.push({entityId: selectedEntities[i].entityId});
-                    }
-
-                    var moveMessage = {
-                        type: "move",
-                        entities: movedEntities,
-                        target: {
-                            x: mouse.x / playground.scaleFactor,
-                            y: mouse.y / playground.scaleFactor
-                        }
-                    };
-                    var message = JSON.stringify(moveMessage);
-                    socket.sendTextMessage(message);
-                    previousTrigger = Date.now();
-                    return;
+                    moveCommand(target, waypoint);
+                    ignoreClick = true;
                 }
-                if(!(mouse.modifiers & Qt.ShiftModifier)) {
+                if(mouse.button === Qt.LeftButton && !(mouse.modifiers & Qt.ShiftModifier)) {
                     drag.target = undefined;
                     selectionStart = Qt.point(mouse.x, mouse.y);
                     selectionEnd = selectionStart;
@@ -392,6 +398,13 @@ Rectangle {
         }
 
         Button {
+            text: server.running ? "Pause server" : "Resume server"
+            onClicked: {
+                server.running = !server.running
+            }
+        }
+
+        Button {
             text: "-> copy ->"
             onClicked: {
                 clientTextField.text = server.url;
@@ -404,15 +417,29 @@ Rectangle {
         }
 
         Button {
-            text: "Connect"
-            onClicked: {
-                socket.url = clientTextField.text;
+            text: {
+                switch(socket.status) {
+                case WebSocket.Closed:
+                    return "Connect";
+                case WebSocket.Closing:
+                    return "Connect (closing...)";
+                case WebSocket.Connecting:
+                    return "Disconnect (connecting...)";
+                case WebSocket.Error:
+                    return "Connect (error...)";
+                case WebSocket.Open:
+                    return "Disconnect";
+                }
             }
-        }
 
-        CheckBox {
-            id: serverRunningCheckbox
-            text: "Server running"
+            onClicked: {
+                console.log(socket.active, socket.url, Qt.resolvedUrl(socket.url), Qt.resolvedUrl(socket.url) === "");
+                if(Qt.resolvedUrl(socket.url) === "") {
+                    socket.url = clientTextField.text
+                } else {
+                    socket.active = !socket.active
+                }
+            }
         }
     }
 
@@ -444,6 +471,36 @@ Rectangle {
 
             sourceItem: playground
             smooth: true
+
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+
+                function movePlayground(mouse) {
+                    playground.x = -mouse.x / parent.width * playground.width + root.width * 0.5;
+                    playground.y = -mouse.y / parent.height * playground.height + root.height * 0.5;
+                }
+
+                onPressed: {
+                    if(mouse.button === Qt.RightButton) {
+                        drag.target = undefined;
+                        var target = Qt.vector2d(mouse.x / width * playground.width / playground.scaleFactor, mouse.y / height * playground.height / playground.scaleFactor);
+                        var waypoint = false;
+                        if(mouse.modifiers & Qt.ShiftModifier) {
+                            waypoint = true;
+                        }
+                        moveCommand(target, waypoint);
+                    } else {
+                        movePlayground(mouse);
+                    }
+                }
+
+                onPositionChanged: {
+                    if(mouse.button === Qt.LeftButton) {
+                        movePlayground(mouse);
+                    }
+                }
+            }
         }
 
         Rectangle {
@@ -455,23 +512,6 @@ Rectangle {
             color: "#33000000"
             border.width: 1.0
             border.color: "#99999999"
-        }
-
-        MouseArea {
-            anchors.fill: parent
-
-            function movePlayground(mouse) {
-                playground.x = -mouse.x / parent.width * playground.width + root.width * 0.5;
-                playground.y = -mouse.y / parent.height * playground.height + root.height * 0.5;
-            }
-
-            onPressed: {
-                movePlayground(mouse);
-            }
-
-            onPositionChanged: {
-                movePlayground(mouse);
-            }
         }
     }
 

@@ -21,7 +21,9 @@ function applyProperties(object, properties) {
                 continue;
             }
             found = true;
-            if(typeof(prop) === "object" && typeof(propertyGroup[i]) == "object") {
+            if(prop instanceof Array && propertyGroup[i] instanceof Array) {
+                propertyGroup[i] = prop;
+            } else if(typeof(prop) === "object" && typeof(propertyGroup[i]) == "object") {
                 applyProperties(propertyGroup[i], prop);
             } else {
                 propertyGroup[i] = prop;
@@ -42,7 +44,9 @@ function generateProperties(entity) {
         var properties = entity.persistentProperties[i];
         for(var name in properties) {
             var prop = properties[name];
-            if(typeof(prop) === "object") {
+            if(prop instanceof Array) {
+                result[name] = prop;
+            } else if(typeof(prop) === "object") {
                 result[name] = generateProperties(prop);
             } else {
                 result[name] = prop;
