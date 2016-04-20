@@ -289,7 +289,7 @@ Rectangle {
                     previousTrigger = Date.now();
                     return;
                 }
-                if(mouse.modifiers & Qt.ShiftModifier) {
+                if(!(mouse.modifiers & Qt.ShiftModifier)) {
                     drag.target = undefined;
                     selectionStart = Qt.point(mouse.x, mouse.y);
                     selectionEnd = selectionStart;
@@ -306,6 +306,9 @@ Rectangle {
 
             onReleased: {
                 if(selecting) {
+                    if(!(mouse.modifiers & Qt.ControlModifier)) {
+                        deselectAll();
+                    }
                     for(var i in entities) {
                         var entity = entities[i];
                         if(entity.player.playerId === player.playerId &&

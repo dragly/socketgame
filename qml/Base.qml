@@ -10,9 +10,9 @@ Entity {
 //    property real spawnInterval: 2000
     property real timeSinceSpawn: 0.0
 
-    defaultEnergy: 20.0
-    energy: 40.0
-    maximumEnergy: 100.0
+    defaultEnergy: 5.0
+    energy: 7.0
+    maximumEnergy: 10.0
 
     persistentProperties: QtObject {
         property alias spawnInterval: root.spawnInterval

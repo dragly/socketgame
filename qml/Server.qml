@@ -31,7 +31,7 @@ Item {
         property var entities: []
         property int currentPlayerId: 0
         property int currentEntityId: 0
-        property var availableColors: ["pink", "lightgreen", "lightblue", "yellow", "orange"]
+        property var availableColors: ["pink", "lightgreen", "lightblue", "yellow", "orange", "#dd3333"]
 
         Component.onCompleted: {
             server.currentPlayerId += 1;
