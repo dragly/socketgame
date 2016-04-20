@@ -383,7 +383,7 @@ Rectangle {
             onClicked: {
                 server.host = serverTextField.text;
                 server.port = parseInt(serverPortTextField.text);
-                server.listen = true;
+                server.listen = !server.listen
             }
         }
 
@@ -419,7 +419,7 @@ Rectangle {
             top: parent.top
             margins: 24
         }
-        width: 192
+        width: 256
         height: width
 
         color: "#AA111111"

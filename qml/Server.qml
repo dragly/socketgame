@@ -9,7 +9,10 @@ import "random.js" as Random
 
 Item {
     id: serverContainer
-    property url url: server.url
+    property alias url: server.url
+    property alias host: server.host
+    property alias port: server.port
+    property alias listen: server.listen
 
     Playground {
         id: serverPlayground
@@ -29,8 +32,6 @@ Item {
         property int currentPlayerId: 0
         property int currentEntityId: 0
         property var availableColors: ["pink", "lightgreen", "lightblue", "yellow", "orange"]
-
-        listen: true
 
         Component.onCompleted: {
             server.currentPlayerId += 1;
