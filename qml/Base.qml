@@ -6,8 +6,8 @@ Entity {
     id: root
 
     property bool base: true
-    property real spawnInterval: 60*1000 / (energy * energy / (defaultEnergy * defaultEnergy))
-//    property real spawnInterval: 2000
+//    property real spawnInterval: 60*1000 / (energy * energy / (defaultEnergy * defaultEnergy))
+    property real spawnInterval: 2000
     property real timeSinceSpawn: 0.0
     property vector2d target
 

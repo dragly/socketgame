@@ -47,7 +47,9 @@ Item {
             var dummyPlayer = playerComponent.createObject(server, playerProperties);
             server.players.push(dummyPlayer);
 
-            for(var i = 0; i < 4; i++) {
+            var baseCount = 0;
+//            var baseCount = 4;
+            for(var i = 0; i < baseCount; i++) {
                 var baseProperties = {
                     player: dummyPlayer
                 };
@@ -251,6 +253,24 @@ Item {
                         }
                     }
                     break;
+                case "push":
+                    for(var j in parsed.entities) {
+                        var parsedEntity = parsed.entities[j];
+                        for(var i in entities) {
+                            var entity = entities[i];
+                            if(parsedEntity.entityId !== entity.entityId) {
+                                continue;
+                            }
+                            if(entity.player !== player) {
+                                continue;
+                            }
+                            if(!entity.particle) {
+                                continue;
+                            }
+                            entity.pushing = true;
+                        }
+                    }
+                    break;
                 }
             });
             webSocket.onStatusChanged.connect(function(status) {
@@ -375,6 +395,9 @@ Item {
                         if(length < 0.2 && entity2.bursting && entity2.burstingFactor > 0.9) {
                             entity1.velocity = entity1.velocity.plus(direction.times(-0.0004 / (length*length)))
                         }
+                        if(length < 0.1 && entity2.pushing) {
+                            entity1.velocity = entity1.velocity.plus(direction.times(-0.2));
+                        }
 
                         if(isNaN(force.x) || isNaN(force.y)) {
                             force = Qt.vector2d(0, 0)
@@ -428,6 +451,9 @@ Item {
                             entity.toBeDeleted = true;
                         }
                     }
+
+                    // drop pushing
+                    entity.pushing = false;
 
                     // integration
                     entity.velocity = entity.velocity.plus(entity.force.times(dt / entity.mass))

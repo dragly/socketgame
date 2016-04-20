@@ -21,6 +21,7 @@ Entity {
     property bool particle: true
     property bool bursting: false
     property real burstingFactor: 1.0
+    property bool pushing: false
     
     filename: "Particle.qml"
 
@@ -35,6 +36,7 @@ Entity {
         property alias hasTarget: root.hasTarget
         property alias waypoints: root.waypoints
         property alias bursting: root.bursting
+        property alias pushing: root.pushing
         property alias burstingFactor: root.burstingFactor
     }
 

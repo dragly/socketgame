@@ -606,6 +606,21 @@ Rectangle {
             };
             var message = JSON.stringify(burstMessage);
             socket.sendTextMessage(message);
+            break;
+        case Qt.Key_P:
+            console.log("Send push message");
+            var burstEntities = [];
+            for(var i in selectedEntities) {
+                var entity = selectedEntities[i];
+                burstEntities.push({entityId: entity.entityId});
+            }
+            var burstMessage = {
+                type: "push",
+                entities: burstEntities
+            };
+            var message = JSON.stringify(burstMessage);
+            socket.sendTextMessage(message);
+            break;
         }
     }
 
