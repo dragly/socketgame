@@ -56,6 +56,7 @@ Item {
 
                 base.position.x = w * 0.5 + Random.centered() * w * 0.1;
                 base.position.y = h * 0.5 + Random.centered() * h * 0.1;
+                base.target = base.position;
                 base.timeSinceSpawn = Math.random() * base.spawnInterval;
             }
 
@@ -157,6 +158,7 @@ Item {
         }
 
         onClientConnected: {
+            console.log("Client connected");
             currentPlayerId += 1;
             var color = availableColors[currentPlayerId % availableColors.length];
             console.log("Player color:", color);
@@ -194,6 +196,8 @@ Item {
                 base.position.y = Math.random() * h;
             }
 
+            base.target = base.position;
+
             var offsetY = (Math.random() > 0.5) ? 0.9 : 0.0;
 
             webSocket.sendTextMessage(JSON.stringify(welcomeMessage));
@@ -212,11 +216,9 @@ Item {
                             if(entity.player !== player) {
                                 continue;
                             }
-                            if(!entity.particle) {
-                                continue;
+                            if(entity.particle) {
+                                entity.hasTarget = true;
                             }
-
-                            entity.hasTarget = true;
                             entity.target.x = parsed.target.x;
                             entity.target.y = parsed.target.y;
                         }
@@ -308,6 +310,8 @@ Item {
                 particle.velocity.x = 0.2 * Random.centered();
                 particle.velocity.y = 0.2 * Random.centered();
                 particle.position = base.position;
+                particle.target = base.target;
+                particle.hasTarget = true;
                 base.timeSinceSpawn = 0.0;
             }
 
@@ -376,7 +380,7 @@ Item {
                             var length = delta.length();
 
                             if(length < 0.04) {
-                                entity1.energy += 10.0;
+                                entity1.energy += 0.05;
                                 entity2.player = entity1.player;
                             }
 

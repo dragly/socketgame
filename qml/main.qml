@@ -312,6 +312,7 @@ Rectangle {
                     for(var i in entities) {
                         var entity = entities[i];
                         if(entity.player.playerId === player.playerId &&
+                                entity.particle &&
                                 entity.x > selectionRectangle.x &&
                                 entity.y > selectionRectangle.y &&
                                 entity.x + entity.width < selectionRectangle.x + selectionRectangle.width &&
@@ -387,6 +388,13 @@ Rectangle {
                 server.host = serverTextField.text;
                 server.port = parseInt(serverPortTextField.text);
                 server.listen = !server.listen
+            }
+        }
+
+        Button {
+            text: "-> copy ->"
+            onClicked: {
+                clientTextField.text = server.url;
             }
         }
 
@@ -591,8 +599,10 @@ Rectangle {
     }
 
     Settings {
-        property alias serverHost: serverTextField.text
-        property alias serverPort: serverPortTextField.text
+        property alias serverHostTextField: serverTextField.text
+        property alias serverPortTextField: serverPortTextField.text
+//        property alias serverHost: server.host
+//        property alias serverPort: server.port
         property alias socketUrl: clientTextField.text
     }
 }
