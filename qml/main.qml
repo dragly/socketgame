@@ -24,14 +24,26 @@ Rectangle {
 
     function createEntityFromUrl(url, properties) {
         var component = Qt.createComponent(url);
-        var entity = component.createObject(playground, properties);
+        var container = playgroundParticleLayer;
+        if(url === "Base.qml") {
+            container = playgroundBaseLayer;
+        }
+
+        properties.scaleFactor = Qt.binding(function() {return playground.scaleFactor;});
+
+        var entity = component.createObject(container, properties);
 
         entity.clicked.connect(function(mouse) {
             if(!(mouse.modifiers & Qt.ShiftModifier)) {
                 deselectAll();
             }
-            selectedEntities.push(entity);
-            entity.selected = true;
+            if((mouse.modifiers & Qt.ShiftModifier) && entity.selected) {
+                selectedEntities.splice(selectedEntities.indexOf(entity), 1);
+                entity.selected = false;
+            } else {
+                selectedEntities.push(entity);
+                entity.selected = true;
+            }
         });
 
         entities.push(entity);
@@ -339,6 +351,16 @@ Rectangle {
                 visible: playgroundMouseArea.selecting
             }
         }
+
+        Item {
+            id: playgroundBaseLayer
+            anchors.fill: parent
+        }
+
+        Item {
+            id: playgroundParticleLayer
+            anchors.fill: parent
+        }
     }
 
     Row {
@@ -397,9 +419,11 @@ Rectangle {
             top: parent.top
             margins: 24
         }
-        color: "#AA111111"
         width: 192
         height: width
+
+        color: "#AA111111"
+        clip: true
 
         ShaderEffectSource {
             anchors {
@@ -420,6 +444,23 @@ Rectangle {
             color: "#33000000"
             border.width: 1.0
             border.color: "#99999999"
+        }
+
+        MouseArea {
+            anchors.fill: parent
+
+            function movePlayground(mouse) {
+                playground.x = -mouse.x / parent.width * playground.width + root.width * 0.5;
+                playground.y = -mouse.y / parent.height * playground.height + root.height * 0.5;
+            }
+
+            onPressed: {
+                movePlayground(mouse);
+            }
+
+            onPositionChanged: {
+                movePlayground(mouse);
+            }
         }
     }
 

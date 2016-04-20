@@ -23,7 +23,7 @@ GameObject {
 
     property var neighbors: []
     property real animationDuration: 0
-    property real scaleFactor: parent.scaleFactor
+    property real scaleFactor: 1.0
 
     x: visible ? position.x * scaleFactor - height * 0.5 : 0
     y: visible ? position.y * scaleFactor - width * 0.5 : 0
